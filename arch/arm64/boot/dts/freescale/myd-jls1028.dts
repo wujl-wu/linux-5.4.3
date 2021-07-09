@@ -1,0 +1,328 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+/*
+ * Device Tree file for NXP LS1028A RDB Board.
+ *
+ * Copyright 2018-2019 NXP
+ *
+ * Harninder Rai <harninder.rai@nxp.com>
+ *
+ */
+
+/dts-v1/;
+#include "fsl-ls1028a.dtsi"
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/input/input.h>
+/ {
+	model = "MYIR MYD-JLS1028 Development Board";
+	compatible = "fsl,ls1028a-rdb", "fsl,ls1028a";
+
+	aliases {
+		crypto = &crypto;
+		serial0 = &duart0;
+		serial1 = &duart1;
+	};
+
+	chosen {
+		stdout-path = "serial0:115200n8";
+	};
+
+	memory@80000000 {
+		device_type = "memory";
+		reg = <0x0 0x80000000 0x1 0x0000000>;
+	};
+
+	sys_mclk: clock-mclk {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <25000000>;
+	};
+	audio_mclk: audio-clk {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <24576000>;
+	};
+	sc16is752_mclk: sc16is752-clk {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <11059200>;
+	};
+	reg_1p8v: regulator-1p8v {
+		compatible = "regulator-fixed";
+		regulator-name = "1P8V";
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+		regulator-always-on;
+	};
+
+	sb_3v3: regulator-sb3v3 {
+		compatible = "regulator-fixed";
+		regulator-name = "3v3_vbus";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		regulator-boot-on;
+		regulator-always-on;
+	};
+	gpio_keys: volume_keys@0 {
+		compatible = "gpio-keys";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		//autorepeat;
+
+		switch@1 {
+			label = "user";
+			linux,code = <KEY_1>;
+			gpios = <&gpio3 3 GPIO_ACTIVE_LOW>;
+			//gpio-key,wakeup;
+		};
+			
+	};
+
+	leds {
+		compatible = "gpio-leds";
+		led@3 {
+			label = "d22";
+			gpios = <&gpio3 2 GPIO_ACTIVE_LOW>;	
+			default-state = "on";
+			linux,default-trigger = "heartbeat";
+		};
+	};
+	sound {
+		compatible = "simple-audio-card";
+		label = "SGTL5000-MYIR";
+		simple-audio-card,format = "i2s";
+		simple-audio-card,widgets =
+			"Microphone", "Microphone Jack",
+			"Headphone", "Headphone Jack",
+			"Speaker", "Speaker Ext",
+			"Line", "Line In Jack";
+		simple-audio-card,routing =
+			"MIC_IN", "Microphone Jack",
+			"Microphone Jack", "Mic Bias",
+			"LINE_IN", "Line In Jack",
+			"Headphone Jack", "HP_OUT",
+			"Speaker Ext", "LINE_OUT";
+
+		simple-audio-card,cpu {
+			sound-dai = <&sai4>;
+			frame-master;
+			bitclock-master;
+		};
+
+		simple-audio-card,codec {
+			sound-dai = <&sgtl5000>;
+			frame-master;
+			bitclock-master;
+			system-clock-frequency = <25000000>;
+		};
+	};
+
+};
+
+&esdhc {
+	sd-uhs-sdr104;
+	sd-uhs-sdr50;
+	sd-uhs-sdr25;
+	sd-uhs-sdr12;
+	broken-cd;
+	status = "okay";
+};
+
+&esdhc1 {
+	mmc-hs200-1_8v;
+	mmc-hs400-1_8v;
+	bus-width = <8>;
+	status = "okay";
+};
+
+&usb1 {
+	dr_mode = "otg";
+};
+
+&i2c0 {
+	status = "okay";
+	sgtl5000: audio-codec@a {
+		#sound-dai-cells = <0>;
+		compatible = "fsl,sgtl5000";
+		reg = <0xa>;
+		VDDA-supply = <&reg_1p8v>;
+		VDDIO-supply = <&reg_1p8v>;
+		clocks = <&sys_mclk>;
+		sclk-strength = <3>;
+		};
+
+
+	temperature-sensor@4c {
+		compatible = "nxp,sa56004";
+		reg = <0x4c>;
+		vcc-supply = <&sb_3v3>;
+	};
+	at24@50 {
+		compatible = "atmel,24c32";
+		pagesize = <34>;
+		reg = <0x50>;
+		num-addresses = <8>;
+	};
+	clock-generator@6a {
+                 compatible = "silabs,si5338";
+                 reg = <0x6a>;
+                                /* other stuff */
+             };
+};
+
+&i2c5 {
+	status = "okay";
+	clock-frequency = <400000>;
+	
+	sc16is752: sc16is752@48 {
+		compatible = "nxp,sc16is752";
+		reg = <0x48>;
+		clocks = <&sc16is752_mclk>;
+		interrupt-parent = <&gpio1>;
+		interrupts = <24 IRQ_TYPE_EDGE_FALLING>;
+
+	};	
+	rx8025: rx8025@32 {
+		compatible = "epson,rx8025t";
+		reg = <0x32>;
+	};
+
+};
+
+
+&fspi {
+	status = "okay";
+	mt35xu02g: flash@0 {
+		compatible = "spansion,m25p80";
+		#address-cells = <1>;
+		#size-cells = <1>;
+		m25p,fast-read;
+		spi-max-frequency = <20000000>;
+		reg = <0>;
+		/* The following setting enables 1-1-8 (CMD-ADDR-DATA) mode */
+		spi-rx-bus-width = <8>; /* 8 SPI Rx lines */
+		spi-tx-bus-width = <1>; /* 1 SPI Tx line */
+	};
+};
+
+&dspi2 {
+        bus-num = <2>;
+        status = "okay";
+
+        spidev@0 {
+                compatible = "semtech,sx1301";
+                reg = <0>;
+                spi-max-frequency = <2000000>;
+                fsl,spi-cs-sck-delay = <1000000>;
+                fsl,spi-sck-cs-delay = <50>;
+        };
+};
+
+&duart0 {
+	status = "okay";
+};
+
+&duart1 {
+	status = "okay";
+};
+&enetc_port0 {
+	phy-handle = <&sgmii_phy0>;
+	phy-connection-type = "sgmii";
+	phy-reset-duration = <20>;
+        phy-reset-gpios = <&gpio3 1 GPIO_ACTIVE_HIGH>;
+        phy-reset-post-delay=<20>;
+	mdio {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		sgmii_phy0: ethernet-phy@6 {
+			reg = <0x6>;
+		};
+	};
+};
+&pcie1{
+	status = "okay";
+};
+&pcie2{
+	status = "okay";
+};
+&enetc_port1 {
+	status = "disabled";
+};
+
+&enetc_mdio_pf3 {
+	qsgmii_phy1: ethernet-phy@10 {
+		reg = <0x10>;
+	};
+
+	qsgmii_phy2: ethernet-phy@11 {
+		reg = <0x11>;
+	};
+
+	qsgmii_phy3: ethernet-phy@12 {
+		reg = <0x12>;
+	};
+
+	qsgmii_phy4: ethernet-phy@13 {
+		reg = <0x13>;
+	};
+};
+&mscc_felix {
+        status = "okay";
+};
+
+/* l2switch ports */
+&mscc_felix_ports {
+        port@0 {
+                status = "okay";
+                phy-handle = <&qsgmii_phy1>;
+                phy-mode = "qsgmii";
+                managed = "in-band-status";
+        };
+
+        port@1 {
+                status = "okay";
+                phy-handle = <&qsgmii_phy2>;
+                phy-mode = "qsgmii";
+                managed = "in-band-status";
+        };
+
+        port@2 {
+                status = "okay";
+                phy-handle = <&qsgmii_phy3>;
+                phy-mode = "qsgmii";
+                managed = "in-band-status";
+        };
+
+        port@3 {
+                status = "okay";
+                phy-handle = <&qsgmii_phy4>;
+                phy-mode = "qsgmii";
+                managed = "in-band-status";
+        };
+		     /* internal to-cpu ports */
+         mscc_felix_port4: port@4 {
+                   reg = <4>;
+                   ethernet = <&enetc_port2>;
+                   phy-mode = "internal";
+
+                   fixed-link {
+                          speed = <2500>;
+                            full-duplex;
+                                };
+                             };
+};
+
+&sai4 {
+	status = "okay";
+};
+
+&can0 {
+        status = "okay";
+            can-transceiver {
+                max-bitrate = <5000000>;
+        };
+};
+
+&hdptx0 {
+	lane-mapping = <0x4e>;
+	status = "okay";
+};
