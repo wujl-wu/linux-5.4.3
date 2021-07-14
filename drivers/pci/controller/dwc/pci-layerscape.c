@@ -22,7 +22,8 @@
 #include <linux/resource.h>
 #include <linux/mfd/syscon.h>
 #include <linux/regmap.h>
-
+#include <linux/gpio.h>
+#include <linux/of_gpio.h>
 #include "pcie-designware.h"
 
 /* PEX Internal Configuration Registers */
@@ -86,6 +87,7 @@ struct ls_pcie {
 	bool pm_support;
 	struct regmap *scfg;
 	int index;
+	int     reset_gpio;
 };
 
 #define ls_pcie_lut_readl_addr(addr)	ls_pcie_lut_readl(pcie, addr)
@@ -360,7 +362,11 @@ static int ls_pcie_host_init(struct pcie_port *pp)
 	ls_pcie_drop_msg_tlp(pcie);
 
 	dw_pcie_setup_rc(pp);
-
+   if (gpio_is_valid(pcie->reset_gpio)) {
+	gpio_set_value_cansleep(pcie->reset_gpio,1);
+	msleep(100);
+	gpio_set_value_cansleep(pcie->reset_gpio,0);
+   }
 	return 0;
 }
 
@@ -502,6 +508,16 @@ static int __init ls_pcie_probe(struct platform_device *pdev)
 
 	if (pcie->drvdata->pf_off)
 		pcie->pf_base = pci->dbi_base + pcie->drvdata->pf_off;
+
+	pcie->reset_gpio = of_get_named_gpio(node, "reset-gpio", 0);
+	if (gpio_is_valid(pcie->reset_gpio)) {
+		 ret = devm_gpio_request_one(dev, pcie->reset_gpio,
+				 GPIOF_OUT_INIT_HIGH,"PCIe reset");
+		if (ret) {
+			 dev_err(dev, "unable to get reset gpio\n");
+			 return ret;
+		}
+	}
 
 	if (!ls_pcie_is_bridge(pcie))
 		return -ENODEV;
