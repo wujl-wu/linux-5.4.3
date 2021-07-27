@@ -410,6 +410,7 @@
 			interrupt-controller;
 			#interrupt-cells = <2>;
 			little-endian;
+			fsl,rcpm-wakeup = <&rcpm 0x0 0x0 0x0 0x0 0x200 0x0 0x0>;
 		};
 
 		usb0: usb@3100000 {
@@ -690,11 +691,12 @@
 					};
 
 					core_cluster_crit: core-cluster-crit {
-						temperature = <95000>;
+						temperature = <105000>;
 						hysteresis = <2000>;
 						type = "critical";
 					};
 				};
+
 
 				cooling-maps {
 					map0 {

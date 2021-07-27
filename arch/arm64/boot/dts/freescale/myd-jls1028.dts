@@ -133,9 +133,19 @@
 	bus-width = <8>;
 	status = "okay";
 };
-
+&usb0 {
+        dr_mode = "host";
+//	snps,dis-del-phy-power-chg-quirk;
+//	snps,usb2-lpm-disable;
+//	snps,dis_u2_susphy_quirk;
+	phy-names = "usb3-phy";
+	quirk-broken-port-ped;
+        //snps,host-vbus-glitches;
+};
 &usb1 {
-	dr_mode = "otg";
+	dr_mode = "host";
+	snps,dis-del-phy-power-chg-quirk;
+	//snps,host-vbus-glitches;
 };
 
 &i2c0 {

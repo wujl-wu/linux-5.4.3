@@ -423,6 +423,8 @@ static int mpc8xxx_probe(struct platform_device *pdev)
 			np->full_name, mpc8xxx_gc->irqn, ret);
 		goto err;
 	}
+	device_init_wakeup(&pdev->dev, true);
+	enable_irq_wake(mpc8xxx_gc->irqn);
 
 	return 0;
 err:
