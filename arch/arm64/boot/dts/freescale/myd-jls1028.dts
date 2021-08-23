@@ -239,7 +239,8 @@
 	phy-handle = <&sgmii_phy0>;
 	phy-connection-type = "sgmii";
 	phy-reset-duration = <10>;
-        phy-reset-gpios = <&gpio3 1 GPIO_ACTIVE_HIGH>;
+        phy-reset-gpios = <&gpio3 1 GPIO_ACTIVE_LOW>;
+	//phy-reset-gpios_mac = <&gpio1 27 GPIO_ACTIVE_LOW>;
         phy-reset-post-delay=<20>;
 	mdio {
 		#address-cells = <1>;
@@ -262,6 +263,10 @@
 };
 
 &enetc_mdio_pf3 {
+	//phy-reset-duration = <10>;
+       // phy-reset-gpios = <&gpio1 27 GPIO_ACTIVE_LOW>; 
+        //phy-reset-post-delay=<70>;
+
 	qsgmii_phy1: ethernet-phy@10 {
 		reg = <0x10>;
 	};
@@ -327,3 +332,8 @@
 	lane-mapping = <0x4e>;
 	status = "okay";
 };
+/*
+&dpclk {
+    vco-frequency = <1066500000>;
+    status = "okay";
+};*/

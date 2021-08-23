@@ -3571,11 +3571,11 @@ free_queue_mem:
 #ifdef CONFIG_OF
 static int fec_reset_phy(struct platform_device *pdev)
 {
-	int err, phy_reset;
-	bool active_high = false;
+	int err, phy_reset,phy_reset_mac;
+	bool active_high = false,active_high1 = false;
 	int msec = 1, phy_post_delay = 0;
 	struct device_node *np = pdev->dev.of_node;
-
+	struct device_node *np1 = pdev->dev.of_node;
 	if (!np)
 		return 0;
 
@@ -3588,6 +3588,12 @@ static int fec_reset_phy(struct platform_device *pdev)
 	if (phy_reset == -EPROBE_DEFER)
 		return phy_reset;
 	else if (!gpio_is_valid(phy_reset))
+		return 0;
+
+	 phy_reset_mac = of_get_named_gpio(np1, "phy-reset-gpios_mac", 0);
+	if (phy_reset_mac == -EPROBE_DEFER)
+		return phy_reset_mac;
+	else if (!gpio_is_valid(phy_reset_mac))
 		return 0;
 
 	err = of_property_read_u32(np, "phy-reset-post-delay", &phy_post_delay);
@@ -3604,6 +3610,14 @@ static int fec_reset_phy(struct platform_device *pdev)
 		dev_err(&pdev->dev, "failed to get phy-reset-gpios: %d\n", err);
 		return err;
 	}
+	active_high1 = of_property_read_bool(np1, "phy-reset-active-high");
+	 err = devm_gpio_request_one(&pdev->dev, phy_reset_mac,
+			 active_high1 ? GPIOF_OUT_INIT_HIGH : GPIOF_OUT_INIT_LOW,
+			 "phy-reset_mac");
+	 if (err) {
+		  dev_err(&pdev->dev, "failed to get phy-reset-gpios_mac: %d\n", err);
+		  return err;
+	 }
 
 	if (msec > 20)
 		msleep(msec);
@@ -3620,7 +3634,11 @@ static int fec_reset_phy(struct platform_device *pdev)
 	else
 		usleep_range(phy_post_delay * 1000,
 			     phy_post_delay * 1000 + 1000);
-
+	msleep(phy_post_delay);
+	msleep(phy_post_delay);
+	 msleep(phy_post_delay);
+	  msleep(phy_post_delay);
+	gpio_set_value_cansleep(phy_reset_mac, !active_high1);
 	return 0;
 }
 #else /* CONFIG_OF */
@@ -3886,11 +3904,11 @@ fec_probe(struct platform_device *pdev)
 	pm_runtime_get_noresume(&pdev->dev);
 	pm_runtime_set_active(&pdev->dev);
 	pm_runtime_enable(&pdev->dev);
-
+/*
 	ret = fec_reset_phy(pdev);
 	if (ret)
 		goto failed_reset;
-
+*/
 	irq_cnt = fec_enet_get_irq_cnt(pdev);
 	if (fep->bufdesc_ex)
 		fec_ptp_init(pdev, irq_cnt);

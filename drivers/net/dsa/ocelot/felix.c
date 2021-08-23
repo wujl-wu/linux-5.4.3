@@ -18,6 +18,7 @@
 #include <net/dsa.h>
 #include "felix_tsn.h"
 #include "felix.h"
+#include <linux/of_gpio.h>
 
 static enum dsa_tag_protocol felix_get_tag_protocol(struct dsa_switch *ds,
 						    int port,
@@ -474,7 +475,11 @@ static int felix_parse_dt(struct felix *felix, phy_interface_t *port_phy_modes)
 	struct device *dev = felix->ocelot.dev;
 	struct device_node *switch_node;
 	struct device_node *ports_node;
-	int err;
+	struct device_node *np;
+	bool active_high = false;
+	int err,mac_reset;
+	int msec = 1,phy_post_delay=0;
+	np = dev->of_node;
 
 	switch_node = dev->of_node;
 
@@ -486,7 +491,40 @@ static int felix_parse_dt(struct felix *felix, phy_interface_t *port_phy_modes)
 
 	err = felix_parse_ports_node(felix, ports_node, port_phy_modes);
 	of_node_put(ports_node);
+/*
+	 err = of_property_read_u32(np, "phy-reset-duration", &msec);
+	 if (!err && msec > 1000)
+		 msec = 1;
+	mac_reset = of_get_named_gpio(np, "phy-reset-gpios", 0);
+	if (mac_reset == -EPROBE_DEFER)
+		return mac_reset;
+	else if (!gpio_is_valid(mac_reset))
+		return 0;
 
+	err = of_property_read_u32(np, "phy-reset-post-delay", &phy_post_delay);
+	if (!err && phy_post_delay > 1000)
+		return -EINVAL;
+	active_high = of_property_read_bool(np, "phy-reset-active-high");
+	err = devm_gpio_request_one(dev, mac_reset,
+			active_high ? GPIOF_OUT_INIT_HIGH : GPIOF_OUT_INIT_LOW,
+			"mac_reset");
+	if (err) {
+		dev_err(dev, "failed to get phy-reset-gpios: %d\n", err);
+		return err;
+		 }
+	if (msec > 20)
+		msleep(msec);
+	else
+		usleep_range(msec * 1000, msec * 1000 + 1000);
+	gpio_set_value_cansleep(mac_reset, !active_high);
+	if (!phy_post_delay)
+		return 0;
+	if (phy_post_delay > 20)
+		msleep(phy_post_delay);
+	else
+		usleep_range(phy_post_delay * 1000,
+				phy_post_delay * 1000 + 1000);
+*/
 	return err;
 }
 
